@@ -1,0 +1,6 @@
+#!/bin/sh
+touch logs/VisionErrors.txt
+export UdpSend=CONFIG
+echo "Waiting 15 seconds..."
+sleep 5
+exec env LD_LIBRARY_PATH=/usr/local/frc/lib java -jar uploaded.jar
