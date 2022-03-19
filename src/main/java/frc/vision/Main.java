@@ -39,7 +39,7 @@ public final class Main {
         }
     }
 
-    static final String version = "RPi Vision 3/18/2022"; // change this every time  
+    static final String version = "RPi Vision 3/19/2022"; // change this every time  
 
     // if running without a roboRIO and want to see ShuffleBoard then say true.
     // then a ton of error messages about NT don't print and you can see your own prints.
