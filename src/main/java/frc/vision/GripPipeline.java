@@ -26,7 +26,6 @@ import org.opencv.objdetect.*;
 public class GripPipeline {
 
 	//Outputs
-	// private Mat hsvOutput = new Mat();
 	private Mat rgbThresholdOutput = new Mat();
 	private Mat maskOutput = new Mat();
 	private Mat blurOutput = new Mat();
@@ -47,9 +46,9 @@ public class GripPipeline {
 	public void process(Mat source0) {
 		// Step RGB_Threshold0:
 		Mat rgbThresholdInput = source0;
-		double[] rgbThresholdRed = {0.0, 250.45454545454547};
-		double[] rgbThresholdGreen = {0.0, 250.45454545454547};
-		double[] rgbThresholdBlue = {0.0, 250.45454545454547};
+		double[] rgbThresholdRed = {0.0, 240.};
+		double[] rgbThresholdGreen = {0.0, 240.};
+		double[] rgbThresholdBlue = {0.0, 240.};
 		rgbThreshold(rgbThresholdInput, rgbThresholdRed, rgbThresholdGreen, rgbThresholdBlue, rgbThresholdOutput);
 
 		// Step Mask0:
@@ -191,10 +190,6 @@ public class GripPipeline {
 		return filterContoursOutput;
 	}
 
-	// public Mat hsvOutput()
-	// {
-	// 	return hsvOutput;
-	// }
 
 	/**
 	 * Segment an image based on color ranges.
@@ -300,7 +295,6 @@ public class GripPipeline {
 	private void hsvThreshold(Mat input, double[] hue, double[] sat, double[] val,
 	    Mat out) {
 		Imgproc.cvtColor(input, out, Imgproc.COLOR_BGR2HSV);
-		// out.copyTo(hsvOutput);
 		Core.inRange(out, new Scalar(hue[0], sat[0], val[0]),
 			new Scalar(hue[1], sat[1], val[1]), out);
 	}

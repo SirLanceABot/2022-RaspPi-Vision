@@ -90,8 +90,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opencv.core.Core;
-import org.opencv.core.CvType;
-// import org.opencv.core.CvException;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Point;
@@ -130,6 +128,8 @@ public class TargetSelection implements Runnable {
   GripPipeline gripPipeline = new GripPipeline();
 
   TargetData nextTargetData = new TargetData();
+
+  private boolean calibrateMode = true; // FIXME: set true for test mode
 
   public void run()
     {
@@ -172,6 +172,7 @@ public class TargetSelection implements Runnable {
 
     // Mats are very memory expensive. Lets reuse this Mat.
     Mat mat = new Mat();
+    Mat matDisplay = new Mat();
 
     List<MatOfPoint> listBoxContour = null;
     
@@ -195,6 +196,8 @@ public class TargetSelection implements Runnable {
 // Imgproc.rectangle(mat, new Point(74, 90), new Point(82, 132), new Scalar(0, 255, 40), 2, Imgproc.LINE_4);
 // Imgproc.rectangle(mat, new Point(90, 150), new Point(120, 155), new Scalar(0, 255, 40), 2, Imgproc.LINE_4);
             
+      mat.copyTo(matDisplay); // display has original image from here then add our drawings
+
       // Reset the next target data and bump up the frame number
       nextTargetData.reset();
       nextTargetData.incrFrameNumber();
@@ -225,11 +228,11 @@ public class TargetSelection implements Runnable {
 
         if(displayTargetContours)
         {
-          Core.transpose(mat, mat); // camera is rotated so make image look right for humans
-          Core.flip(mat, mat, 1);
+          Core.transpose(matDisplay, matDisplay); // camera is rotated so make image look right for humans
+          Core.flip(matDisplay, matDisplay, 1);
 
           // Display a message if no contours are found.
-          Imgproc.putText(mat, "No Contours", new Point(10, 20), Core.FONT_HERSHEY_SIMPLEX, 0.5,
+          Imgproc.putText(matDisplay, "No Contours", new Point(10, 20), Core.FONT_HERSHEY_SIMPLEX, 0.5,
                   new Scalar(255, 255, 255), 1);
         }
           nextTargetData.hubDistance = -1.;
@@ -241,23 +244,15 @@ public class TargetSelection implements Runnable {
                     
           if(displayTargetContours)
           {
-            // if(displayHistogram)
-            // {
-            //   Hist hist = new Hist();
-            //   Mat mask = Mat.zeros(mat.size(), CvType.CV_8UC1); // start mask with all zeros (skip all pixels)
-            //   Imgproc.drawContours(mask, filteredContours, -1, new Scalar(255), -1); // set the mask with the contours
-            //   hist.displayHist(gripPipeline.hsvOutput(), mat, mask, new String[]{"H", "S", "V"}); // get the HSV histogram of the whole image (the contour we are hopeful)
-            // }
-
             // Draw center-line
-            Imgproc.line(mat, new Point(0,Constant.targetCameraHeight/2.) , 
+            Imgproc.line(matDisplay, new Point(0,Constant.targetCameraHeight/2.) , 
               new Point(Constant.targetCameraWidth,Constant.targetCameraHeight/2.), new Scalar(255, 255, 255),
               1, Imgproc.LINE_4);
             // Draw all contours at once (negative index).
             // Positive thickness means not filled, negative thickness means filled.
             // Draw all the contours that gripPipeline found in red
             // Later we'll draw over the ones we use in yellow
-            Imgproc.drawContours(mat, filteredContours, -1, new Scalar(0, 0, 255), 1); // red for GRIP contours
+            Imgproc.drawContours(matDisplay, filteredContours, -1, new Scalar(0, 0, 255), 1); // red for GRIP contours
 
             listBoxContour = new ArrayList<MatOfPoint>();
           }
@@ -400,7 +395,7 @@ public class TargetSelection implements Runnable {
             // Draw all the contours that we use in yellow
             if(displayTargetContours)
             {
-              Imgproc.polylines(mat, // Matrix obj of the image
+              Imgproc.polylines(matDisplay, // Matrix obj of the image
                 listBoxContour, // draw all the boxes
                 true, // isClosed
                 new Scalar(0, 255, 255), // yellow
@@ -442,18 +437,18 @@ public class TargetSelection implements Runnable {
 
             if(displayTargetContours)
             {
-              Core.transpose(mat, mat); // camera is rotated so make image look right for humans
-              Core.flip(mat, mat, 1);
+              Core.transpose(matDisplay, matDisplay); // camera is rotated so make image look right for humans
+              Core.flip(matDisplay, matDisplay, 1);
 
               // display the distance pixels on image for reviewing or revising the conversion table
-              Imgproc.putText(mat,
+              Imgproc.putText(matDisplay,
                 String.format("%3.0f px", targetCenterX, nextTargetData.hubDistance),
                 new Point(1, 12),
                 Core.FONT_HERSHEY_SIMPLEX, 0.4,
                 new Scalar(255, 255, 255), 1);
               
               //displays the angle to turn on the image for reviewing or revising
-              Imgproc.putText(mat,
+              Imgproc.putText(matDisplay,
                 nextTargetData.isTargetFound ? String.format("turn %3.0f deg", nextTargetData.angleToTurn) : "no calibrated view",
                 new Point(2, Constant.targetCameraWidth-8),
                 Core.FONT_HERSHEY_SIMPLEX, 0.4,
@@ -479,7 +474,14 @@ public class TargetSelection implements Runnable {
 
         if(displayTargetContours)
         {
-          outputStream.putFrame(mat); // Give the output stream a new image to display
+          if(calibrateMode)
+          {
+            Core.transpose(mat, mat); // flipped matDisplay above; must flip mat to match it
+            Core.flip(mat, mat, 1);
+            new Calibration().calibrate(mat, matDisplay, filteredContours); // get calibration info
+          }
+
+          outputStream.putFrame(matDisplay); // Give the output stream a new image to display
         }
 
         Main.watchdog.reset();
